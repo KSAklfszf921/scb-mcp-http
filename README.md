@@ -1,6 +1,30 @@
-# SCB MCP Server - Statistics Sweden Data Access for Claude Desktop
+# SCB & E-hälsomyndigheten MCP Server (HTTP Version)
 
-A Model Context Protocol (MCP) server that provides Claude Desktop with seamless access to Statistics Sweden's (SCB) PX-Web API v2. This integration enables Claude to search, browse, and retrieve Swedish statistical data with built-in rate limiting, intelligent validation, and usage monitoring.
+**✅ FIXED: OAuth/Initialize Error** - This HTTP version includes full MCP protocol support with `initialize` and `initialized` methods, fixing the error that prevented Claude Code from connecting.
+
+A Model Context Protocol (MCP) server providing access to Statistics Sweden's (SCB) PX-Web API v2 and E-hälsomyndigheten medicine data via HTTP transport.
+
+## 🚀 Quick Deploy to Fix Your Server
+
+```bash
+# Clone this fixed version
+git clone https://github.com/YOUR_USERNAME/scb-mcp-http.git
+cd scb-mcp-http
+npm install && npm run build
+
+# Deploy to Render (or run locally)
+npm start
+```
+
+## 🔧 What's Different?
+
+| Feature | Original (stdio) | This Version (HTTP) |
+|---------|------------------|---------------------|
+| Transport | stdio only | HTTP with CORS |
+| Initialize method | ❌ Missing | ✅ Implemented |
+| Claude Code support | ❌ Broken | ✅ Working |
+| OpenAI/ChatGPT | ⚠️ Limited | ✅ Full support |
+| Deployment | Complex | Easy (Render/Vercel) |
 
 ## 🎯 What is this?
 

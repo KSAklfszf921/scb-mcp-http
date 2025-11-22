@@ -1,0 +1,1738 @@
+openapi: "3.0.2"
+info:
+  title: PxApi
+  version: "2.0"
+  description: |
+    This api lets you do 2 things; Find a table(Navigation) and use a table (Table).
+
+    _Table below is added to show how tables can be described in yml._
+
+    **Table contains status code this API may return**
+    | Status code    | Description      | Reason                      |
+    | -------        | -----------      | ---------------------       |
+    | 200            | Success          | The endpoint has delivered response for the request                      |
+    | 400            | Bad request      | If the request is not valid |
+    | 403            | Forbidden        | number of cells exceed the API limit |
+    | 404            | Not found        | If the URL in request does not exist |
+    | 429            | Too many request | Requests exceed the API time limit. Large queries should be run in sequence |
+    | 50X            | Internal Server Error | The service might be down |
+
+tags:
+  - name: Navigation
+    description: Find a table
+  - name: Table
+    description: Use a table
+  - name: Saved Queries
+    description: Save a query for later use
+
+paths:
+  /navigation:
+    get:
+      tags:
+        - Navigation
+      summary: Get root Folder.
+      operationId: GetNavigationRoot
+      parameters:
+        - $ref: "#/components/parameters/lang"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolderResponse"
+              examples:
+                NavigateRoot:
+                  $ref: "./examplesAsYml/folder-root.yml#/folder-root"
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+  /navigation/{id}:
+    get:
+      tags:
+        - Navigation
+      summary: Gets Folder by {id}.
+      operationId: GetNavigationById
+      parameters:
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/lang"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolderResponse"
+              examples:
+                Navigation-BE:
+                  $ref: "./examplesAsYml/folder-be.yml#/folder-be"
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+  /tables:
+    get:
+      tags:
+        - Table
+      summary: Get all Tables.
+      operationId: ListAllTables
+      parameters:
+        - $ref: "#/components/parameters/lang"
+        - $ref: "#/components/parameters/query"
+        - $ref: "#/components/parameters/pastDays"
+        - $ref: "#/components/parameters/include_discontinued"
+        - $ref: "#/components/parameters/pageNumber"
+        - $ref: "#/components/parameters/pageSize"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TablesResponse"
+              examples:
+                tables:
+                  $ref: "./examplesAsYml/tablesResponse.yml#/tablesResponse"
+  /tables/{id}:
+    get:
+      tags:
+        - Table
+      summary: Get Table by {id}.
+      operationId: GetTableById
+      parameters:
+        - $ref: "#/components/parameters/lang"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+  /tables/{id}/metadata:
+    get:
+      tags:
+        - Table
+      summary: Get Metadata about Table by {id}.
+      description: |
+        **Used for listing detailed information about a specific table**
+        * List all variables and values and all other metadata needed to be able to fetch data
+
+        * Also links to where to:
+          + Fetch
+          - Where to get information about codelists
+
+        * 2 output formats
+          + Custom json
+          - JSON-stat2
+      operationId: GetMetadataById
+      parameters:
+        - $ref: "#/components/parameters/lang"
+        - $ref: "#/components/parameters/id"
+        - in: query
+          name: defaultSelection
+          schema:
+            type: boolean
+            default: false
+          description: |
+            If metadata should be included as if default selection would have been applied.
+            This is a technical parameter that is used by PxWeb for initial loading of tables.
+        - in: query
+          name: codelist
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+            example: |
+              [
+                {"variable_1": "NUTS_2008"}
+              ]
+          style: deepObject
+          explode: true
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+              examples:
+                Dataset-meta:
+                  $ref: "./examplesAsYml/dataset-meta.yml#/dataset-meta"
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+  /tables/{id}/defaultselection:
+    get:
+      tags:
+        - Table
+      summary: Get the default selection for Table by {id}.
+      description: Get information about what is selected for the table by default when no selection is made i the /data endpoint.
+      operationId: GetDefaultSelection
+      parameters:
+        - $ref: "#/components/parameters/lang"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectionResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+  /codelists/{id}:
+    get:
+      tags:
+        - Table
+      summary: Get Codelist by {id}.
+      operationId: GetTableCodeListById
+      parameters:
+        - $ref: "#/components/parameters/lang"
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CodeListResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+  /tables/{id}/data:
+    get:
+      tags:
+        - Table
+      summary: Get data from table by {id}.
+      operationId: GetTableData
+      parameters:
+        - $ref: "#/components/parameters/lang"
+        - $ref: "#/components/parameters/id"
+        - in: query
+          name: valuecodes
+          schema:
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: string
+            example: |
+              [
+                {"variable_1": "1,2,3"},
+                {"variable_2": "top(5)"}
+              ]
+          style: deepObject
+          explode: true
+        - in: query
+          name: codelist
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+            example: |
+              [
+                {"variable_1": "NUTS_2008"}
+              ]
+          style: deepObject
+          explode: true
+        - $ref: "#/components/parameters/outputFormat"
+        - $ref: "#/components/parameters/outputFormatParams"
+        - in: query
+          name: heading
+          style: form
+          explode: false
+          required: false
+          description: Commaseparated list of variable codes that should be placed in the heading in the resulting data
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          name: stub
+          style: form
+          explode: false
+          required: false
+          description: Commaseparated list of variable codes that should be placed in the stub in the resulting data
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+            application/xml:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "403":
+          $ref: "#/components/responses/ErrorResponse403"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+    post:
+      tags:
+        - Table
+      summary: Get data from table by {id}.
+      operationId: GetTableDataByPost
+      parameters:
+        - $ref: "#/components/parameters/lang"
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/outputFormat"
+        - $ref: "#/components/parameters/outputFormatParams"
+      requestBody:
+        description: A selection
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariablesSelection"
+
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+            application/xml:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "403":
+          $ref: "#/components/responses/ErrorResponse403"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+  /config:
+    get:
+      tags:
+        - Configuration
+      summary: Get API configuration settings.
+      operationId: GetApiConfiguration
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigResponse"
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+  /savedqueries:
+    post:
+      tags:
+        - Saved Queries
+      summary: Save a query for later use.
+      operationId: CreateSaveQuery
+      requestBody:
+        description: A saved query
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedQuery"
+      responses:
+        "201":
+          description: Saved query created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedQuery"
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+  /savedqueries/{id}:
+    get:
+      tags:
+        - Saved Queries
+      parameters:
+        - $ref: "#/components/parameters/id"
+      summary: Retrieves the content of a saved query.
+      operationId: GetSaveQuery
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedQuery"
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+  /savedqueries/{id}/data:
+    get:
+      tags:
+        - Saved Queries
+      parameters:
+        - $ref: "#/components/parameters/lang"
+        - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/outputFormat"
+        - $ref: "#/components/parameters/outputFormatParams"
+      summary: Retrieves the data by running the saved query.
+      operationId: RunSaveQuery
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
+            application/xml:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/ErrorResponse400"
+        "403":
+          $ref: "#/components/responses/ErrorResponse403"
+        "404":
+          $ref: "#/components/responses/ErrorResponse404"
+        "429":
+          $ref: "#/components/responses/ErrorResponse429"
+
+components:
+  parameters:
+    lang:
+      name: lang
+      in: query
+      description: The language if the default is not what you want.
+      required: false
+      schema:
+        type: string
+        nullable: true
+      examples:
+        X1:
+          value: en
+          summary: For english
+        X2:
+          value: dk
+          summary: For danish
+    id:
+      name: id
+      in: path
+      description: Id
+      required: true
+      schema:
+        type: string
+    codeListId:
+      name: codeListId
+      in: path
+      description: Identifier for a code list
+      required: true
+      schema:
+        type: string
+    query:
+      name: query
+      in: query
+      description: Selects only tables that that matches a criteria which is specified by the search parameter.
+      required: false
+      schema:
+        type: string
+      examples:
+        X1:
+          value: befolkning
+          summary: Search for tables with name `befolkning`
+    pastDays:
+      name: pastDays
+      in: query
+      description: Selects only tables that was updated from the time of execution going back number of days stated by the parameter pastDays. Valid values for past days are integers between 1 and ?
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+      examples:
+        X1:
+          value: 5
+          summary: Search for tables which has been updated in the last 5 days
+    include_discontinued:
+      name: includeDiscontinued
+      in: query
+      description: Decides if discontinued tables are included in response.
+      required: false
+      schema:
+        type: boolean
+        default: false
+        example: false
+    pageNumber:
+      name: pageNumber
+      in: query
+      description: "Pagination: Decides which page number to return"
+      required: false
+      schema:
+        type: integer
+        default: 1
+    pageSize:
+      name: pageSize
+      in: query
+      description: "Pagination: Decides how many tables per page"
+      required: false
+      schema:
+        type: integer
+        #Default value depends on site?
+    outputFormat:
+      name: outputFormat
+      in: query
+      schema:
+        $ref: "#/components/schemas/OutputFormatType"
+    outputFormatParams:
+      name: outputFormatParams
+      in: query
+      required: false
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/OutputFormatParamType"
+  schemas:
+    OutputFormatType:
+      type: string
+      enum:
+        - px
+        - json-stat2
+        - csv
+        - xlsx
+        - html
+        - json-px
+        - parquet
+
+    OutputFormatParamType:
+      type: string
+      enum:
+        - UseCodes
+        - UseTexts
+        - UseCodesAndTexts
+        - IncludeTitle
+        - SeparatorTab
+        - SeparatorSpace
+        - SeparatorSemicolon
+      description: |
+        Parameters for the output format.
+        * UseCodes: Can not be combined with UseTexts and UseCodesAndTexts. And only applicable for csv, html and xlsx output format.
+        * UseTexts: Can not be combined with UsedCodes and UseCodesAndTexts. And only applicable for csv, html and xlsx output format.
+        * UseCodesAndTexts: Can not be combined with UseCodess and UseTexts. And only applicable for csv, html and xlsx output format.
+        * IncludeTitle: Only applicable for csv, html and xlsx output format.
+        * SeparatorTab: Can not be combined with SeparatorSpace and SeparatorSemicolon. And only applicable for csv output format.
+        * SeparatorSpace: Can not be combined with SeparatorTab and SeparatorSemicolon. And only applicable for csv output format.
+        * SeparatorSemicolon: Can not be combined with SeparatorTab and SeparatorSpace. And only applicable for csv output format.
+
+    SavedQuery:
+      type: object
+      required:
+        - "selection"
+        - "language"
+        - "tableId"
+      properties:
+        id:
+          type: string
+          description: The id of the saved query
+        selection:
+          $ref: "#/components/schemas/VariablesSelection"
+        language:
+          type: string
+          description: language code for the language used in this response
+        tableId:
+          type: string
+          description: which table the query is for
+        outputFormat:
+          $ref: "#/components/schemas/OutputFormatType"
+        outputFormatParams:
+          type: array
+          items:
+            $ref: "#/components/schemas/OutputFormatParamType"
+
+    VariablesSelection:
+      type: object
+      required:
+        - "selection"
+      properties:
+        selection:
+          type: array
+          items:
+            $ref: "#/components/schemas/VariableSelection"
+        placement:
+          $ref: "#/components/schemas/VariablePlacementType"
+
+    VariablePlacementType:
+      type: object
+      properties:
+        heading:
+          description: List of variables that should be placed in the heading in the resulting data
+          type: array
+          items:
+            type: string
+        stub:
+          description: List of variables that should be placed in the stub in the resulting data
+          type: array
+          items:
+            type: string
+    SelectionResponse:
+      allOf:
+        - $ref: "#/components/schemas/VariablesSelection"
+      type: object
+      required:
+        - "language"
+        - "links"
+      properties:
+        language:
+          type: string
+          description: The language code for the language used in this response
+          example: sv
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+
+    VariableSelection:
+      type: object
+      required:
+        - "variableCode"
+        - "values"
+      properties:
+        variableCode:
+          type: string
+          description: The variable code.
+        codeList:
+          type: string
+          description: The identifier of the codelist that should be applied
+          nullable: true
+        valueCodes:
+          type: array
+          description: An array of string that specifies wich values sould be selected. Either as value codes or value expressions
+          items:
+            type: string
+    ConfigResponse:
+      type: object
+      description: API configuration
+      required:
+        - "apiVersion"
+        - "appVersion"
+        - "languages"
+        - "defaultLanguage"
+        - "maxDataCells"
+        - "maxCallsPerTimeWindow"
+        - "timeWindow"
+        - "license"
+        - "defaultDataFormat"
+        - "dataFormats"
+      properties:
+        apiVersion:
+          type: string
+          description: The version of the API spesification
+        appVersion:
+          type: string
+          description: The version of the API implementation
+        languages:
+          type: array
+          description: A list of language that exists for the data.
+          items:
+            $ref: "#/components/schemas/Language"
+        defaultLanguage:
+          type: string
+          description: The id of the language that is the default language.
+        maxDataCells:
+          type: integer
+          description: A threshold of how many datacells that can be fetched in a single API call
+          minimum: 0
+        maxCallsPerTimeWindow:
+          type: integer
+          description: The maximum number of call to the API for a time window indicated by timeWindow.
+          minimum: 1
+        timeWindow:
+          type: integer
+          description: The time window restricting how many call that can be done.
+          minimum: 1
+        license:
+          type: string
+          description: The license that the data is provided.
+        sourceReferences:
+          type: array
+          description: A list of how the data should be cite for diffrent languages.
+          items:
+            $ref: "#/components/schemas/SourceReference"
+        defaultDataFormat:
+          type: string
+          description: The default data format to used when no format is specified in the request.
+        dataFormats:
+          type: array
+          description: List of available data formts for fetching data in.
+          items:
+            type: string
+        features:
+          type: array
+          description: A list of features for the API
+          items:
+            $ref: "#/components/schemas/ApiFeature"
+
+    Language:
+      type: object
+      description: Language information
+      required:
+        - "id"
+        - "label"
+      properties:
+        id:
+          type: string
+          description: The language ISO code
+        label:
+          type: string
+          description: The name of the language
+
+    SourceReference:
+      type: object
+      description: How data should be cite for a specific language
+      required:
+        - "language"
+        - "text"
+      properties:
+        language:
+          type: string
+          description: The language id
+        text:
+          type: string
+          description: The text that should be displayed
+
+    ApiFeature:
+      type: object
+      required:
+        - "id"
+      properties:
+        id:
+          type: string
+          description: The identifyer for the feature
+        params:
+          type: array
+          items:
+            $ref: "#/components/schemas/KeyValuePair"
+
+    KeyValuePair:
+      type: object
+      required:
+        - "key"
+        - "value"
+      properties:
+        key:
+          type: string
+          description: The key
+        value:
+          type: string
+          description: The value associated with the key
+    FolderContentItemTypeEnum:
+      type: string
+      enum:
+        - Heading
+        - FolderInformation
+        - Table
+    FolderContentItem:
+      discriminator:
+        propertyName: objectType
+        mapping:
+          Heading: "#/components/schemas/Heading"
+          FolderInformation: "#/components/schemas/FolderInformation"
+          Table: "#/components/schemas/Table"
+      type: object
+      description: Navigation item.
+      required:
+        - "type"
+        - "id"
+        - "label"
+      properties:
+        type:
+          $ref: "#/components/schemas/FolderContentItemTypeEnum"
+          description: One of Heading, Table or FolderInformation
+          nullable: false
+        id:
+          type: string
+          nullable: false
+        label:
+          type: string
+          nullable: true
+          description: Display text
+        description:
+          type: string
+          nullable: true
+          description: Longer text describing node.
+        sortCode:
+          type: string
+          description: String for sorting the contents in folder
+    FolderResponse:
+      type: object
+      description: Folder item
+      required:
+        - "language"
+        - "id"
+        - "label"
+        - "folderContents"
+        - "links"
+      properties:
+        language:
+          type: string
+          description: The language code (ISO 639) for this response
+        id:
+          type: string
+          nullable: true
+          #nullable = true beacause root is empty
+        label:
+          type: string
+          nullable: true
+          description: Display text
+        description:
+          type: string
+          nullable: true
+          description: Longer text describing node.
+        tags:
+          type: array
+          items:
+            type: string
+            description: tag for folder
+        folderContents:
+          type: array
+          items:
+            $ref: "#/components/schemas/FolderContentItem"
+          nullable: true
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+          description: Links to ...
+          nullable: true
+    FolderInformation:
+      allOf:
+        - $ref: "#/components/schemas/FolderContentItem"
+      type: object
+      description: Folder information item
+      required:
+        - "links"
+      properties:
+        tags:
+          type: array
+          items:
+            type: string
+            description: tag for folder
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+          description: Links to ...
+          nullable: true
+    Heading:
+      allOf:
+        - $ref: "#/components/schemas/FolderContentItem"
+      type: object
+      description: Heading item
+
+    TableResponse:
+      allOf:
+        - $ref: "#/components/schemas/Table"
+      required:
+        - "language"
+      properties:
+        language:
+          type: string
+          description: The language code (ISO 639) for this response
+
+    PathElement:
+      type: object
+      required:
+        - "id"
+        - "label"
+      properties:
+        id:
+          type: string
+          description: The identity of the PathElement
+        label:
+          type: string
+          description: A textual name for the PathElement
+
+    Table:
+      allOf:
+        - $ref: "#/components/schemas/FolderContentItem"
+      type: object
+      description: Table item
+      required:
+        - "updated"
+        - "firstPeriod"
+        - "lastPeriod"
+        - "variableNames"
+        - "links"
+      properties:
+        tags:
+          type: array
+          items:
+            type: string
+            description: tag for table
+        updated:
+          type: string
+          description: Date and time when the figures in the table was last updated, in UTC time.
+          pattern: "^((19|20)\\d\\d)\\-(0?[1-9]|1[012])\\-(0?[1-9]|[12][0-9]|3[01])$"
+          format: date-time
+          nullable: true
+        firstPeriod:
+          type: string
+          description: First period
+          example: 2017
+          nullable: true
+        lastPeriod:
+          type: string
+          description: Last period
+          example: 2022
+          nullable: true
+        category:
+          type: string
+          description: Mostly for internal use. Which category table belongs to. internal, public, private or section.
+          default: public
+          enum:
+            - internal
+            - public
+            - private
+            - section
+        variableNames:
+          type: array
+          description: List of varibles name
+          items:
+            type: string
+        discontinued:
+          $ref: "#/components/schemas/Discontinued"
+        source:
+          type: string
+          description: The source of the table
+        subjectCode:
+          type: string
+          description: The subject code of the table
+        timeUnit:
+          $ref: "#/components/schemas/TimeUnit"
+          description: The time unit for the table
+
+        paths:
+          type: array
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/PathElement"
+          description: The path to the table
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+          description: Links to ...
+          nullable: true
+
+    Discontinued:
+      description: If the table is discontinued or not. That is if it no longer updated with new figures.
+      type: boolean
+      nullable: true
+
+    PageInfo:
+      type: object
+      required:
+        - "pageNumber"
+        - "pageSize"
+        - "totalElements"
+        - "totalPages"
+      properties:
+        pageNumber:
+          type: integer
+          description: The current page number.
+          format: int32
+          minimum: 1
+        pageSize:
+          type: integer
+          format: int32
+          description: The maximal number of elements in a page
+          example: 100
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int32
+          description: the Total number of elements
+          minimum: 0
+        totalPages:
+          type: integer
+          format: int32
+          description: The total number of pages
+          minimum: 1
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+
+    TablesResponse:
+      type: object
+      required:
+        - "language"
+        - "tables"
+        - "page"
+      properties:
+        language:
+          type: string
+          description: The language code (ISO 639) for this response
+        tables:
+          type: array
+          items:
+            $ref: "#/components/schemas/Table"
+        page:
+          $ref: "#/components/schemas/PageInfo"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+
+
+    Note:
+      type: object
+      required:
+        - "text"
+      properties:
+        mandatory:
+          type: boolean
+          default: false
+          description: Must be shown to end user if true
+        text:
+          type: string
+    CodeListInformation:
+      type: object
+      required:
+        - "id"
+        - "label"
+        - "type"
+        - "links"
+      properties:
+        id:
+          type: string
+          description: The identity of the CodeList
+        label:
+          type: string
+          description: A textual name for the CodeList
+        type:
+          $ref: "#/components/schemas/CodeListType"
+        links:
+          type: array
+          description: Links to associated information about the code list
+          items:
+            $ref: "#/components/schemas/Link"
+    Contact:
+      type: object
+      required:
+        - "raw"
+      properties:
+        name:
+          type: string
+          example: Inga Svensson
+        organization:
+          type: string
+          example: Statistics Sweden
+        phone:
+          type: string
+          example: "+46101111111"
+        mail:
+          type: string
+          example: testmail@testmail.com
+        raw:
+          type: string
+          description: Raw contact information for compatability with PX files
+    CodeListsResponse:
+      type: object
+      required:
+        - "language"
+      properties:
+        language:
+          type: string
+          description: The language code for the language used in this response
+          example: sv
+        codeLists:
+          type: array
+          items:
+            $ref: "#/components/schemas/CodeListMetadata"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+    CodeListMetadata:
+      type: object
+      required:
+        - "id"
+        - "label"
+        - "type"
+        - "links"
+      properties:
+        id:
+          type: string
+          description: The identiyer for the codelist
+          example: agg_RegionNUTS2_2008
+        label:
+          type: string
+          description: The textual name  for the codelist.
+          example: NUTS2 fr.o.m 2008
+        type:
+          $ref: "#/components/schemas/CodeListType"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+
+    CodeListType:
+      type: string
+      description: Type of codelist
+      enum:
+        - Aggregation
+        - Valueset
+
+    CodeListResponse:
+      type: object
+      required:
+        - "id"
+        - "label"
+        - "language"
+        - "languages"
+        - "type"
+        - "values"
+        - "links"
+      properties:
+        id:
+          type: string
+          description: The identiyer for the codelist
+          example: agg_RegionNUTS2_2008
+        label:
+          type: string
+          description: The textual name  for the codelist.
+          example: NUTS2 fr.o.m 2008
+        language:
+          type: string
+          description: The language code for the language used in this response
+          example: sv
+        languages:
+          type: array
+          items:
+            type: string
+          description: The languages that the codelist is available in
+        elimination:
+          type: boolean
+          default: false
+          description: If the codelist is eliminatable
+        eliminationValueCode:
+          type: string
+          description: The value code that should be used for elimination. If not set the variable will be eliminated by summing up all values.
+        type:
+          $ref: "#/components/schemas/CodeListType"
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/ValueMap"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+
+    ValueMap:
+      type: object
+      required:
+        - "code"
+        - "label"
+        - "valueMap"
+      properties:
+        code:
+          type: string
+          description: The code for the value.
+          example: "SE22"
+        label:
+          type: string
+          description: The textual representation for the value
+          example: Sydsverige
+        valueMap:
+          type: array
+          description: An array of codes from the origial codelist for the variable that cand be mapped to this value
+          example: '["10", "12"]'
+          items:
+            type: string
+        notes:
+          type: array
+          description: Optional notes that are associated with the value
+          items:
+            $ref: "#/components/schemas/Note"
+
+    Link:
+      type: object
+      required:
+        - "rel"
+        - "hreflang"
+        - "href"
+      properties:
+        rel:
+          type: string
+          nullable: false
+          description: the link relation, see https://www.iana.org/assignments/link-relations/link-relations.xhtml
+        hreflang:
+          type: string
+          description: The language that is used for the link, see https://moz.com/learn/seo/hreflang-tag
+        href:
+          type: string
+          nullable: false
+          description: the link to the resource
+
+    Problem:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+          description: |
+            An absolute URI that identifies the problem type.  When dereferenced,
+            it SHOULD provide human-readable documentation for the problem type
+            (e.g., using HTML).
+          default: about:blank
+          example: https://zalando.github.io/problem/constraint-violation
+        title:
+          type: string
+          description: |
+            A short, summary of the problem type. Written in english and readable
+            for engineers (usually not suited for non technical stakeholders and
+            not localized); example: Service Unavailable
+        status:
+          type: integer
+          format: int32
+          description: |
+            The HTTP status code generated by the origin server for this occurrence
+            of the problem.
+          minimum: 100
+          maximum: 600
+          exclusiveMaximum: true
+          example: 503
+        detail:
+          type: string
+          description: |
+            A human readable explanation specific to this occurrence of the
+            problem.
+          example: Connection to database timed out
+        instance:
+          type: string
+          format: uri
+          description: |
+            An absolute URI that identifies the specific occurrence of the problem.
+            It may or may not yield further information if dereferenced.
+
+    strarray:
+      type: array
+      items:
+        type: string
+      uniqueItems: true
+    updated:
+      description: See https://json-stat.org/full/#updated
+      type: string
+      pattern: "^((19|20)\\d\\d)\\-(0?[1-9]|1[012])\\-(0?[1-9]|[12][0-9]|3[01])$"
+    href:
+      description: Specification on json-stat.org -> [here](https://json-stat.org/full/#href)
+      type: string
+      format: uri
+    label:
+      description: Specification on json-stat.org -> [here](https://json-stat.org/full/#label)
+      type: string
+    source:
+      description: Specification on json-stat.org -> [here](https://json-stat.org/full/#source)
+      type: string
+    extension-root:
+      description: extension at root level
+      type: object
+      properties:
+        noteMandatory:
+          $ref: "#/components/schemas/jsonstat-noteMandatory"
+        px:
+          description: |
+            Properties corresponds to keywords in the px-file.
+
+            See [PX file format](https://www.scb.se/en/services/statistical-programs-for-px-files/px-file-format/)
+          type: object
+          properties:
+            infofile:
+              description: Name of a file containing more information for the statistics**
+              type: string
+            tableid:
+              description: A text that is the identity of the table
+              type: string
+            decimals:
+              description: The number of decimals in the table cells
+              type: integer
+            official-statistics:
+              description: Indicates if the data table is included in the official statistics of the organization
+              type: boolean
+            aggregallowed:
+              description: If the contents of the table cannot be aggregated
+              type: boolean
+            copyright:
+              description: If the table is protected by copyright
+              type: boolean
+            language:
+              description: code (two characters) for language
+              type: string
+            contents:
+              description: Information about the contents, which makes up the first part of a title created when retrieving tables from PC-Axis.
+              type: string
+            description:
+              description: See _description_ in [PX file format](https://www.scb.se/en/services/statistical-programs-for-px-files/px-file-format/)
+              type: string
+            descriptiondefault:
+              description: For some languages it is difficult to build a table title dynamically. The keyword descriptiondefault = True; means that the text after keyword Description will be used as title for the table
+              type: boolean
+            heading:
+              description: List of suggested variables for table head
+              type: array
+              items:
+                type: string
+            stub:
+              description: List of suggested variables for table stub
+              type: array
+              items:
+                type: string
+            matrix:
+              description: The name of the matrix
+              type: string
+            subject-code:
+              description: Subject area code
+              type: string
+            subject-area:
+              description: Subject area
+              type: string
+            nextUpdate:
+              description: Date for next update
+              $ref: "#/components/schemas/updated"
+            survey:
+              description: Survey for table
+              type: string
+            link:
+              description: Links for tables
+              type: string
+            updateFrequency:
+              description: How often a table is updated
+              type: string
+        firstPeriod:
+          description: Earliest time period in table
+          type: string
+        lastPeriod:
+          description: Latest time period in table
+          type: string
+        tags:
+          description: Tag for table
+          type: array
+          items:
+            type: string
+        discontinued:
+          $ref: "#/components/schemas/Discontinued"
+        contact:
+          type: array
+          description: A list of contacts associated with the table.
+          items:
+            $ref: "#/components/schemas/Contact"
+    extension:
+      description: extension at some level
+      type: object
+    extension-dimension:
+      description: extension at dimension
+      type: object
+      properties:
+        elimination:
+          description: Can dimension be elminated
+          type: boolean
+        eliminationValueCode:
+          description: Elimination value code
+          type: string
+        noteMandatory:
+          $ref: "#/components/schemas/jsonstat-noteMandatory"
+        categoryNoteMandatory:
+          description: Describes which value note are mandatory
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/jsonstat-noteMandatory"
+        refperiod:
+          description: Text with information on the exact period for the statistics
+          type: object
+          additionalProperties:
+            type: string
+        show:
+          description: Information about how variables are presented
+          type: string
+        codeLists:
+          $ref: "#/components/schemas/CodeLists"
+        measuringType:
+          description: Indicates if data is stock, flow or average.
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/MeasuringType"
+        priceType:
+          description: Indicates if data is in current or fixed prices.
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/PriceType"
+        adjustment:
+          description: Describes adjustments made to the data
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Adjustment"
+        basePeriod:
+          description: Base period for, for instance index series. Is shown with the footnote. If there is a contents variable the keyword is repeated for each value of the contents variable.
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/BasePeriod"
+    strarray-by-str-dict:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+        uniqueItems: true
+    jsonstat-link:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: object
+          title: jsonstatLink
+          properties:
+            type:
+              type: string
+            href:
+              "$ref": "#/components/schemas/href"
+          additionalProperties: false
+    jsonstat-extension-link:
+      type: object
+      properties:
+        describedby:
+          type: array
+          items:
+            type: object
+            title: DimensionExtension
+            properties:
+              extension:
+                description: A extension object
+                type: object
+                additionalProperties:
+                  description: A string
+                  type: string
+
+            additionalProperties: false
+      additionalProperties: false
+    jsonstat-note:
+      description: Spesification on json-stat.org -> [here](https://json-stat.org/full/#note)
+      type: array
+      items:
+        type: string
+    jsonstat-noteMandatory:
+      description: Describes if a note of a certain index is mandatory.
+      type: object
+      additionalProperties:
+        type: boolean
+        default: true
+    jsonstat-category:
+      type: object
+      properties:
+        index:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#index)
+          type: object
+          additionalProperties:
+            type: integer
+        label:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#label)
+          type: object
+          minProperties: 1
+          additionalProperties:
+            type: string
+        note:
+          description: Notes for values
+          type: object
+          additionalProperties:
+            "$ref": "#/components/schemas/jsonstat-note"
+        child:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#child)
+          "$ref": "#/components/schemas/strarray-by-str-dict"
+        unit:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#unit)
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              base:
+                description: It is the base unit (person, gram, euro, etc.).
+                type: string
+              decimals:
+                description: Number of decimals
+                type: integer
+      additionalProperties: false
+
+    Role:
+      description: Specification on json-stat.org -> [here](https://json-stat.org/full/#role)
+      type: object
+      properties:
+        time:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#time)
+          $ref: "#/components/schemas/strarray"
+        geo:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#geo)
+          $ref: "#/components/schemas/strarray"
+        metric:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#metric)
+          $ref: "#/components/schemas/strarray"
+      additionalProperties: false
+
+    Dimension:
+      description: Specification on json-stat.org -> [here](https://json-stat.org/full/#dimension)
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          label:
+            description: Specification on json-stat.org -> [here](https://json-stat.org/full/#label)
+            $ref: "#/components/schemas/label"
+          note:
+            description: Notes for variable
+            $ref: "#/components/schemas/jsonstat-note"
+          category:
+            description: Specification on json-stat.org -> [here](https://json-stat.org/full/#category)
+            $ref: "#/components/schemas/jsonstat-category"
+          extension:
+            $ref: "#/components/schemas/extension-dimension"
+          link:
+            $ref: "#/components/schemas/jsonstat-extension-link"
+        additionalProperties: false
+
+    CodeLists:
+      description: Available codelists for this dimension
+      type: array
+      items:
+        $ref: "#/components/schemas/CodeListInformation"
+
+    Adjustment:
+      description: WorkOnly means that data is adjusted e.g. to take into account the number of working days. SesOnly means that data is seasonally adjusted.
+      type: string
+      default: None
+      enum:
+        - None
+        - SesOnly
+        - WorkOnly
+        - WorkAndSes
+
+    PriceType:
+      description: Indicates if data is in current or fixed prices.
+      type: string
+      enum:
+        - NotApplicable
+        - Current
+        - Fixed
+
+    MeasuringType:
+      description: Indicates if data is stock, flow or average.
+      type: string
+      default: Other
+      enum:
+        - Stock
+        - Flow
+        - Average
+        - Other
+
+    TimeUnit:
+      description: Indicates the time scale for the variable.
+      type: string
+      enum:
+      - Annual
+      - Quarterly
+      - Monthly
+      - Weekly
+      - Other
+
+    BasePeriod:
+      description: Base period for, for instance index series. Is shown with the footnote. If there is a contents variable the keyword is repeated for each value of the contents variable.
+      type: string
+
+    Dataset:
+      title: JSON-stat 2.0 Dataset Schema
+      description: |
+        Representation of TableMetaData/TableData according to JSON-stat 2.0 Dataset Schema (2018-09-05 10:55), see full specification of JSON-stat format [here](https://json-stat.org/full/)
+
+        Properties in **extension** are mostly from PX-file format, see [PX file format](https://www.scb.se/en/services/statistical-programs-for-px-files/px-file-format/)
+      type: object
+      properties:
+        version:
+          description: JSON-stat version 2.0
+          type: string
+          enum:
+            - "2.0"
+          default: "2.0"
+        class:
+          "$ref": "#/components/schemas/ClassType"
+          # description: "Is always dataset"
+          # type: string
+          # enum:
+          #   - dataset
+          # default: dataset
+        href:
+          "$ref": "#/components/schemas/href"
+        label:
+          "$ref": "#/components/schemas/label"
+        source:
+          "$ref": "#/components/schemas/source"
+        updated:
+          "$ref": "#/components/schemas/updated"
+        link:
+          "$ref": "#/components/schemas/jsonstat-link"
+        note:
+          description: Note for table
+          $ref: "#/components/schemas/jsonstat-note"
+        role:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#role)
+          "$ref": "#/components/schemas/Role"
+        id:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#id)
+          "$ref": "#/components/schemas/strarray"
+        size:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#size)
+          type: array
+          items:
+            type: integer
+        dimension:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#dimension)
+          "$ref": "#/components/schemas/Dimension"
+        extension:
+          "$ref": "#/components/schemas/extension-root"
+        value:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#value)
+          type: array
+          nullable: true
+          items:
+            type: number
+            format: double
+            nullable: true
+        status:
+          description: Specification on json-stat.org -> [here](https://json-stat.org/full/#status)
+          type: object
+          additionalProperties:
+            type: string
+      additionalProperties: false
+      required:
+        - version
+        - class
+        - value
+        - id
+        - size
+        - dimension
+
+    ClassType:
+      description: "Is always dataset"
+      type: string
+      enum:
+        - dataset
+      default: dataset
+
+  responses:
+    ErrorResponse429:
+      description: Error response for 429
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+            #Reference:
+            # https://dzone.com/articles/rest-api-error-handling-problem-details-response
+            # https://datatracker.ietf.org/doc/html/rfc7807
+            # https://nordicapis.com/best-practices-api-error-handling/
+          example:
+            title: Too many requests
+            status: 429
+            detail: You have reach the threshold for request limiting. 30 request per minute.
+
+    ErrorResponse400:
+      description: Error response for 400
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            title: Bad Request
+            status: 400
+            detail: Value, xxx is not a valid value code for variable yyy
+
+    ErrorResponse403:
+      description: Error response for 403
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            title: Forbiden
+            status: 403
+            detail: The query resulted in cell that exceeds the number of allowed.
+
+    ErrorResponse404:
+      description: Error response for 404
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            title: Not Found
+            status: 404
+            detail: Node with id, xxx can not be found

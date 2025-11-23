@@ -41,7 +41,7 @@ app.use((err: any, req: any, res: any, next: any) => {
 const server = new Server(
   {
     name: 'SCB Statistics Server',
-    version: '2.2.0',
+    version: '2.3.0',
   },
   {
     capabilities: {
@@ -75,7 +75,7 @@ app.options('/mcp', (req, res) => {
 app.get('/mcp', (req, res) => {
   res.json({
     protocol: 'mcp',
-    version: '2.2.0',
+    version: '2.3.0',
     name: 'SCB Statistics Server',
     description: 'Swedish statistics data via MCP protocol',
     authentication: 'none',
@@ -131,7 +131,7 @@ app.post('/mcp', async (req, res) => {
           },
           serverInfo: {
             name: 'SCB Statistics Server',
-            version: '2.2.0',
+            version: '2.3.0',
           },
         },
       });
@@ -433,17 +433,19 @@ async function handleToolCall(name: string, args: any) {
   try {
     switch (name) {
       case 'scb_get_api_status':
+        const config = await apiClient.getConfig();
+        const rateLimitInfo = apiClient.getRateLimitInfo();
         return {
           content: [
             {
               type: 'text',
               text: JSON.stringify({
-                api_version: '2.0.0',
-                max_data_cells: 150000,
+                api_version: config.apiVersion || '2.0.0',
+                max_data_cells: config.maxDataCells || 150000,
                 rate_limit: {
-                  max_calls: 30,
-                  time_window: 10,
-                  remaining: 30,
+                  max_calls: rateLimitInfo?.maxCalls || 30,
+                  time_window: rateLimitInfo?.timeWindow || 10,
+                  remaining: rateLimitInfo?.remaining || 30,
                 },
               }, null, 2),
             },
@@ -451,14 +453,19 @@ async function handleToolCall(name: string, args: any) {
         };
 
       case 'scb_check_usage':
+        const usageInfo = apiClient.getUsageInfo();
+        const resetIn = usageInfo.rateLimitInfo?.resetTime
+          ? Math.max(0, Math.ceil((usageInfo.rateLimitInfo.resetTime.getTime() - Date.now()) / 1000))
+          : 10;
         return {
           content: [
             {
               type: 'text',
               text: JSON.stringify({
-                calls_made: 0,
-                calls_remaining: 30,
-                reset_in_seconds: 10,
+                calls_made: usageInfo.requestCount,
+                calls_remaining: usageInfo.rateLimitInfo?.remaining || 30,
+                reset_in_seconds: resetIn,
+                window_start: usageInfo.windowStart.toISOString(),
               }, null, 2),
             },
           ],
@@ -535,17 +542,162 @@ async function handleToolCall(name: string, args: any) {
           ],
         };
 
+      case 'scb_test_selection':
+        const validation = await apiClient.validateSelection(
+          args.tableId,
+          args.selection,
+          args.language || 'en'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                is_valid: validation.isValid,
+                errors: validation.errors,
+                suggestions: validation.suggestions,
+                translated_selection: validation.translatedSelection,
+              }, null, 2),
+            },
+          ],
+        };
+
+      case 'scb_preview_data':
+        // Get metadata first to understand table structure
+        const previewMetadata = await apiClient.getTableMetadata(args.tableId, args.language || 'en');
+
+        // Create a limited selection automatically if none provided
+        let previewSelection = args.selection;
+        if (!previewSelection && previewMetadata.dimension) {
+          // Build automatic selection with first 5 values or "*" for each dimension
+          previewSelection = {};
+          for (const [dimName, dimDef] of Object.entries(previewMetadata.dimension)) {
+            const values = Object.keys(dimDef.category.index);
+            // Limit to first 3 values to keep preview small
+            previewSelection[dimName] = values.length <= 3 ? values : values.slice(0, 3);
+          }
+        }
+
+        const previewData = await apiClient.getTableData(
+          args.tableId,
+          previewSelection,
+          args.language || 'en'
+        );
+        const previewStructured = apiClient.transformToStructuredData(previewData, previewSelection);
+
+        // Limit to first 20 records
+        const limitedData = {
+          ...previewStructured,
+          data: previewStructured.data.slice(0, 20),
+          summary: {
+            ...previewStructured.summary,
+            displayed_records: Math.min(20, previewStructured.data.length),
+            total_records: previewStructured.summary.total_records,
+            note: previewStructured.data.length > 20
+              ? `Showing first 20 of ${previewStructured.data.length} records. Use scb_get_table_data with specific selection for full data.`
+              : 'Showing all records',
+          },
+        };
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(limitedData, null, 2),
+            },
+          ],
+        };
+
+      case 'scb_browse_folders':
+        const folderData = await apiClient.getNavigation(
+          args.folderId,
+          args.language || 'en'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(folderData, null, 2),
+            },
+          ],
+        };
+
+      case 'scb_search_regions':
+        const regions = await apiClient.searchRegions(
+          args.query,
+          args.language || 'en'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                query: args.query,
+                results: regions,
+                total_found: regions.length,
+              }, null, 2),
+            },
+          ],
+        };
+
+      case 'scb_find_region_code':
+        const regionMatch = await apiClient.findRegionCode(
+          args.query,
+          args.tableId,
+          args.language || 'en'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                query: args.query,
+                exact_matches: regionMatch.exact_matches,
+                suggestions: regionMatch.suggestions,
+              }, null, 2),
+            },
+          ],
+        };
+
       default:
         throw new Error(`Tool not implemented in HTTP server: ${name}`);
     }
   } catch (error) {
+    // Parse error message to extract structured info
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Try to extract SCB API error details from message
+    let scbError = null;
+    let httpStatus = null;
+
+    // Check if message contains SCB JSON error
+    const jsonMatch = errorMessage.match(/(\{.*"type".*\})/);
+    if (jsonMatch) {
+      try {
+        scbError = JSON.parse(jsonMatch[1]);
+      } catch (e) {
+        // Not valid JSON, continue
+      }
+    }
+
+    // Extract HTTP status code
+    const statusMatch = errorMessage.match(/(\d{3})\s+([\w\s]+?):/);
+    if (statusMatch) {
+      httpStatus = parseInt(statusMatch[1]);
+    }
+
     return {
       content: [
         {
           type: 'text',
           text: JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            tool: name,
+            error: {
+              tool: name,
+              message: errorMessage,
+              http_status: httpStatus,
+              scb_error: scbError,
+              timestamp: new Date().toISOString(),
+            },
           }, null, 2),
         },
       ],

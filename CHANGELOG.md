@@ -2,6 +2,27 @@
 
 Alla viktiga ändringar i projektet dokumenteras i denna fil.
 
+## [2.3.0] - 2025-11-23
+
+### Tillagt
+- **5 tidigare oimplementerade verktyg nu funktionella:**
+  - `scb_test_selection` - Validera selektioner innan API-anrop
+  - `scb_preview_data` - Förhandsgranska data (max 20 rader)
+  - `scb_browse_folders` - Navigera SCB:s databasstruktur
+  - `scb_search_regions` - Sök regioner på namn (fuzzy search)
+  - `scb_find_region_code` - Hitta exakta regionkoder för kommun/län
+
+### Fixat
+- **Verklig kvothantering:** `scb_check_usage` och `scb_get_api_status` visar nu faktisk API-användning istället för statiska värden
+- **Korrekt metadata:** `query.table_id` i `get_table_data` visar nu rätt tabell-id istället för dimension-namn
+- **Strukturerad felhantering:** Fel returneras som JSON-objekt med separata fält för HTTP-status, SCB-fel och meddelanden
+- **Bättre felgranularitet:** 424-fel och andra fel inkluderar nu timestamp och strukturerad information
+
+### Förbättrat
+- Utökad region-sökning med typ-identifiering (county/municipality/country)
+- Preview-data med automatisk selection om ingen anges
+- Test-selection med hjälpsamma felmeddelanden och förslag
+
 ## [2.2.0] - 2025-11-23
 
 ### Borttaget

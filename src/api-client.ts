@@ -569,10 +569,14 @@ export class SCBApiClient {
     const totalValue = records.reduce((sum, record) => sum + (record.value || 0), 0);
     const nonNullRecords = records.filter(r => r.value !== null && r.value !== undefined);
 
+    // Extract table_id from extension.px.tableid if available, otherwise from id array
+    const tableId = jsonStat2Data.extension?.px?.tableid ||
+                    (jsonStat2Data.id ? jsonStat2Data.id[0] : null);
+
     return {
       query: {
         selection: selection || {},
-        table_id: jsonStat2Data.id ? jsonStat2Data.id[0] : null,
+        table_id: tableId,
         requested_at: new Date().toISOString()
       },
       data: records,
@@ -624,6 +628,114 @@ export class SCBApiClient {
       requestCount: this.requestCount,
       windowStart: this.windowStartTime,
       rateLimitInfo: this.rateLimitInfo
+    };
+  }
+
+  /**
+   * Search for regions by name (fuzzy search)
+   * Returns regions from multiple common tables that might contain the search term
+   */
+  async searchRegions(query: string, lang = 'en'): Promise<Array<{ code: string; name: string; type: string }>> {
+    // Common region tables to search
+    const tablesToSearch = [
+      'TAB6473', // Population statistics by region
+      'TAB4422', // Population by region, age and sex
+    ];
+
+    const results: Array<{ code: string; name: string; type: string }> = [];
+    const seen = new Set<string>();
+
+    for (const tableId of tablesToSearch) {
+      try {
+        const metadata = await this.getTableMetadata(tableId, lang);
+        if (!metadata.dimension || !metadata.dimension.Region) continue;
+
+        const regionDef = metadata.dimension.Region;
+        const regionCodes = Object.keys(regionDef.category.index);
+
+        for (const code of regionCodes) {
+          const label = regionDef.category.label?.[code] || code;
+          const key = `${code}:${label}`;
+
+          if (seen.has(key)) continue;
+
+          // Fuzzy match: check if query appears in label or code
+          if (label.toLowerCase().includes(query.toLowerCase()) || code.includes(query)) {
+            let type = 'region';
+            if (code.length === 2) type = 'county';
+            else if (code.length === 4) type = 'municipality';
+            else if (code === '00') type = 'country';
+
+            results.push({ code, name: label, type });
+            seen.add(key);
+          }
+        }
+      } catch (error) {
+        // Skip tables that fail
+        continue;
+      }
+
+      // Limit results to avoid excessive data
+      if (results.length >= 50) break;
+    }
+
+    // Sort by type and name
+    return results.sort((a, b) => {
+      if (a.type !== b.type) {
+        const typeOrder: Record<string, number> = { country: 0, county: 1, municipality: 2, region: 3 };
+        return (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  /**
+   * Find exact region code(s) for a municipality or county name
+   */
+  async findRegionCode(
+    query: string,
+    tableId?: string,
+    lang = 'en'
+  ): Promise<{ exact_matches: Array<{ code: string; name: string; type: string; table: string }>; suggestions: string[] }> {
+    const exactMatches: Array<{ code: string; name: string; type: string; table: string }> = [];
+    const suggestions: string[] = [];
+
+    // If specific table provided, search only that table
+    const tables = tableId ? [tableId] : ['TAB6473', 'TAB4422'];
+
+    for (const tId of tables) {
+      try {
+        const metadata = await this.getTableMetadata(tId, lang);
+        if (!metadata.dimension || !metadata.dimension.Region) continue;
+
+        const regionDef = metadata.dimension.Region;
+        const regionCodes = Object.keys(regionDef.category.index);
+
+        for (const code of regionCodes) {
+          const label = regionDef.category.label?.[code] || code;
+
+          // Exact match (case-insensitive)
+          if (label.toLowerCase() === query.toLowerCase()) {
+            let type = 'region';
+            if (code.length === 2) type = 'county';
+            else if (code.length === 4) type = 'municipality';
+            else if (code === '00') type = 'country';
+
+            exactMatches.push({ code, name: label, type, table: tId });
+          }
+          // Partial match for suggestions
+          else if (label.toLowerCase().includes(query.toLowerCase())) {
+            suggestions.push(`${label} (${code})`);
+          }
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+
+    return {
+      exact_matches: exactMatches,
+      suggestions: suggestions.slice(0, 10), // Limit suggestions
     };
   }
 }

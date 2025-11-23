@@ -70,9 +70,11 @@ Servern är tillgänglig via HTTP på:
 - **Produktions-URL**: `https://scb-mcp-http.onrender.com/mcp`
 - **Lokal utveckling**: `http://localhost:3000/mcp`
 
-## Tillgängliga verktyg
+## Tillgängliga funktioner
 
-Servern tillhandahåller 11 verktyg för interaktion med SCB:s data:
+### Verktyg (Tools)
+
+Servern tillhandahåller 11 verktyg för direkt interaktion med SCB:s data:
 
 | Verktyg | Beskrivning |
 |---------|-------------|
@@ -87,6 +89,21 @@ Servern tillhandahåller 11 verktyg för interaktion med SCB:s data:
 | `scb_search_regions` | Sök efter regioner |
 | `scb_check_usage` | Kontrollera API-användning |
 | `scb_browse_folders` | Bläddra databasmappar (deprecated) |
+
+### Promptmallar (Prompts)
+
+Servern erbjuder 6 promptmallar för vanliga analysuppgifter:
+
+| Prompt | Beskrivning | Argument |
+|--------|-------------|----------|
+| `analyze-regional-statistics` | Analysera regional statistik för kommun/län | `region_name`, `topic`, `time_period` |
+| `compare-municipalities` | Jämför statistik mellan kommuner | `municipalities`, `metric`, `year` |
+| `find-statistics-table` | Hjälp att hitta rätt SCB-tabell | `topic`, `region_type`, `time_period` |
+| `build-custom-query` | Steg-för-steg guide för komplex query | `table_id`, `description` |
+| `employment-trend-analysis` | Analysera sysselsättnings-/arbetslöshetstrend | `region`, `months` |
+| `population-demographics` | Hämta demografisk information | `region`, `breakdown` |
+
+Promptmallar aktiveras explicit av användaren och ger strukturerade arbetsflöden för vanliga uppgifter.
 
 ## Exempel
 
@@ -119,6 +136,21 @@ Servern tillhandahåller 11 verktyg för interaktion med SCB:s data:
   }
 }
 ```
+
+### Använda promptmallar
+
+```javascript
+{
+  "prompt": "analyze-regional-statistics",
+  "arguments": {
+    "region_name": "Göteborg",
+    "topic": "arbetslöshet",
+    "time_period": "2024"
+  }
+}
+```
+
+Detta genererar en strukturerad guide som använder flera verktyg för att analysera arbetslöshet i Göteborg.
 
 ## Deployment
 

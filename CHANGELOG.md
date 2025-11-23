@@ -2,6 +2,25 @@
 
 Alla viktiga ändringar i projektet dokumenteras i denna fil.
 
+## [2.4.0] - 2025-11-23
+
+### Tillagt
+- **6 Promptmallar** för strukturerade arbetsflöden:
+  - `analyze-regional-statistics` - Analysera regional statistik
+  - `compare-municipalities` - Jämför statistik mellan kommuner
+  - `find-statistics-table` - Hitta rätt SCB-tabell
+  - `build-custom-query` - Steg-för-steg guide för komplex query
+  - `employment-trend-analysis` - Analysera sysselsättnings-/arbetslöshetstrend
+  - `population-demographics` - Hämta demografisk information
+- **Prompts capability** i MCP-server enligt officiell specifikation
+- **render.yaml** för optimerad Render-deployment
+- Fullständig MCP-protokollimplementation med tools OCH prompts
+
+### Förbättrat
+- README uppdaterad med prompt-dokumentation och exempel
+- Server capabilities nu inkluderar både tools och prompts
+- Bättre deployment-konfiguration för Render
+
 ## [2.3.0] - 2025-11-23
 
 ### Tillagt

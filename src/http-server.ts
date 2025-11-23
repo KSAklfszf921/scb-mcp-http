@@ -6,9 +6,12 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { SCBApiClient } from './api-client.js';
+import { prompts, getPromptById, generatePromptMessages } from './prompts.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,11 +44,12 @@ app.use((err: any, req: any, res: any, next: any) => {
 const server = new Server(
   {
     name: 'SCB Statistics Server',
-    version: '2.3.0',
+    version: '2.4.0',
   },
   {
     capabilities: {
       tools: {},
+      prompts: {},
     },
   }
 );
@@ -64,6 +68,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   return await handleToolCall(name, args);
 });
 
+// Setup prompt handlers
+server.setRequestHandler(ListPromptsRequestSchema, async () => {
+  return {
+    prompts,
+  };
+});
+
+server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  const prompt = getPromptById(name);
+
+  if (!prompt) {
+    throw new Error(`Prompt not found: ${name}`);
+  }
+
+  return {
+    messages: generatePromptMessages(name, args || {}),
+  };
+});
+
 // HTTP endpoints
 
 // OPTIONS handler for CORS preflight
@@ -75,7 +99,7 @@ app.options('/mcp', (req, res) => {
 app.get('/mcp', (req, res) => {
   res.json({
     protocol: 'mcp',
-    version: '2.3.0',
+    version: '2.4.0',
     name: 'SCB Statistics Server',
     description: 'Swedish statistics data via MCP protocol',
     authentication: 'none',
@@ -83,9 +107,10 @@ app.get('/mcp', (req, res) => {
     capabilities: {
       tools: true,
       resources: false,
-      prompts: false,
+      prompts: true,
     },
     tools: 11,
+    prompts: 6,
     connection: {
       method: 'POST',
       endpoint: '/mcp',
@@ -128,10 +153,11 @@ app.post('/mcp', async (req, res) => {
           protocolVersion: '2024-11-05',
           capabilities: {
             tools: {},
+            prompts: {},
           },
           serverInfo: {
             name: 'SCB Statistics Server',
-            version: '2.3.0',
+            version: '2.4.0',
           },
         },
       });
@@ -163,6 +189,43 @@ app.post('/mcp', async (req, res) => {
         jsonrpc: '2.0',
         id,
         result,
+      });
+    }
+
+    // Handle prompts/list
+    if (method === 'prompts/list') {
+      return res.status(200).json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          prompts,
+        },
+      });
+    }
+
+    // Handle prompts/get
+    if (method === 'prompts/get') {
+      const { name, arguments: args } = params;
+      const prompt = getPromptById(name);
+
+      if (!prompt) {
+        return res.status(200).json({
+          jsonrpc: '2.0',
+          id,
+          error: {
+            code: -32602,
+            message: `Prompt not found: ${name}`,
+          },
+        });
+      }
+
+      const messages = generatePromptMessages(name, args || {});
+      return res.status(200).json({
+        jsonrpc: '2.0',
+        id,
+        result: {
+          messages,
+        },
       });
     }
 

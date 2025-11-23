@@ -14,8 +14,28 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false,
+}));
 app.use(express.json());
+
+// Handle JSON parse errors (transport-level error)
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({
+      jsonrpc: '2.0',
+      id: null,
+      error: {
+        code: -32700,
+        message: 'Parse error: Invalid JSON',
+      },
+    });
+  }
+  next();
+});
 
 // Create MCP server instance
 const server = new Server(
@@ -45,6 +65,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // HTTP endpoints
+
+// OPTIONS handler for CORS preflight
+app.options('/mcp', (req, res) => {
+  res.status(204).end();
+});
+
+// GET /mcp - Server information endpoint
 app.get('/mcp', (req, res) => {
   res.json({
     protocol: 'mcp',
@@ -65,6 +92,10 @@ app.get('/mcp', (req, res) => {
       content_type: 'application/json',
       format: 'MCP JSON-RPC 2.0',
     },
+    compatibility: {
+      platforms: ['web', 'desktop', 'cli'],
+      clients: ['Claude Code', 'Claude Desktop', 'ChatGPT', 'Gemini', 'Custom MCP clients'],
+    },
   });
 });
 
@@ -73,8 +104,12 @@ app.post('/mcp', async (req, res) => {
   try {
     const { jsonrpc, id, method, params } = req.body;
 
+    // JSON-RPC 2.0 spec: All valid JSON-RPC responses use HTTP 200
+    // Only transport-level errors (invalid JSON) should use HTTP 400
+
+    // Validate JSON-RPC version
     if (jsonrpc !== '2.0') {
-      return res.status(400).json({
+      return res.status(200).json({
         jsonrpc: '2.0',
         id: id || null,
         error: {
@@ -86,7 +121,7 @@ app.post('/mcp', async (req, res) => {
 
     // Handle initialize method
     if (method === 'initialize') {
-      return res.json({
+      return res.status(200).json({
         jsonrpc: '2.0',
         id,
         result: {
@@ -102,19 +137,16 @@ app.post('/mcp', async (req, res) => {
       });
     }
 
-    // Handle initialized notification
+    // Handle initialized notification (no response per JSON-RPC spec)
     if (method === 'notifications/initialized') {
-      return res.status(200).json({
-        jsonrpc: '2.0',
-        id,
-        result: {},
-      });
+      // Notifications don't require a response, just acknowledge
+      return res.status(204).end();
     }
 
     // Handle tools/list
     if (method === 'tools/list') {
       const tools = getTools();
-      return res.json({
+      return res.status(200).json({
         jsonrpc: '2.0',
         id,
         result: {
@@ -127,15 +159,15 @@ app.post('/mcp', async (req, res) => {
     if (method === 'tools/call') {
       const { name, arguments: args } = params;
       const result = await handleToolCall(name, args);
-      return res.json({
+      return res.status(200).json({
         jsonrpc: '2.0',
         id,
         result,
       });
     }
 
-    // Method not found
-    return res.status(404).json({
+    // Method not found (HTTP 200 per JSON-RPC 2.0 spec)
+    return res.status(200).json({
       jsonrpc: '2.0',
       id,
       error: {
@@ -145,9 +177,10 @@ app.post('/mcp', async (req, res) => {
     });
   } catch (error) {
     console.error('Error handling request:', error);
-    return res.status(500).json({
+    // JSON-RPC errors use HTTP 200 (application-level error)
+    return res.status(200).json({
       jsonrpc: '2.0',
-      id: req.body.id || null,
+      id: req.body?.id || null,
       error: {
         code: -32603,
         message: error instanceof Error ? error.message : 'Internal error',

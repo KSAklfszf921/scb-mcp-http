@@ -29,3 +29,5 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+# Auto-generated API types
+src/types/generated/

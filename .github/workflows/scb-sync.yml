@@ -1,0 +1,72 @@
+name: SCB API Type Sync
+
+on:
+  push:
+    paths:
+      - 'docs/PxAPI-2.yml' # Triggas BARA när dokumentationen ändras
+  workflow_dispatch: # Manuell körning
+
+jobs:
+  sync-code-with-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate API Types
+        id: generate
+        run: |
+          # Kör skriptet som läser din lokala YAML-fil
+          npx tsx scripts/update-api-types.ts
+          
+          # Kolla om den genererade filen ändrades
+          if [[ -n $(git status --porcelain src/types/generated/) ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ API definition updated -> Updating code types"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes in generated types"
+          fi
+
+      - name: Safety Check (Gatekeeper)
+        if: steps.generate.outputs.changed == 'true'
+        run: |
+          echo "🛡️ Verifying type compatibility..."
+          # Kör contract-testerna. Om de failar stoppas jobbet (inget mail, ingen trasig kod).
+          npm test tests/contract/type-safety.test.ts
+          
+          # Se till att hela projektet bygger
+          npm run build
+
+      - name: Create Pull Request
+        if: steps.generate.outputs.changed == 'true' && success()
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: scb-api-update
+          title: "🔄 API Update: Sync types with PxAPI-2.yml"
+          body: |
+            ### 🔄 SCB API Definition Update
+            
+            The documentation file `docs/PxAPI-2.yml` has been updated.
+            
+            **Changes:**
+            This PR auto-generates the corresponding TypeScript types in `src/types/generated/scb-schema.ts` to ensure the code stays consistent with the documentation.
+            
+            **Safety Report:**
+            - ✅ Type Generation: Successful
+            - ✅ Contract Tests: Passed (Your manual types in `src/types.ts` are valid)
+            - ✅ Build Check: Passed

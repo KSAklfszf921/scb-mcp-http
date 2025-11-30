@@ -1,0 +1,12 @@
+dataset-meta:
+  value:
+    title: "Folkmängd efter region, civilstånd, ålder och kön"
+    variables:
+      - code: "Region"
+        text: "region"
+        values: ["00", "01"]
+        valueTexts: ["Riket", "Stockholm"]
+      - code: "Civilstand"
+        text: "civilstånd"
+        values: ["OG", "G"]
+        valueTexts: ["ogifta", "gifta"]
